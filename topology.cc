@@ -21,7 +21,7 @@
 
   /*
    * Scenario topology - Building Infrastructure
-   * 5 eNB, and 10 HeNBs (femtocells) and 20 WiFi access pointg
+   * 5 eNB, and 10 HeNBs (femtocells) and 20 WiFi access points
    * xx UEs ( depends on each run )
    * 1 floor, 8 rooms
    */
@@ -51,6 +51,12 @@
 #include "ns3/config-store.h"
 #include <ns3/buildings-helper.h>
 #include <ns3/buildings-module.h>
+#include "ns3/internet-module.h"
+#include "ns3/applications-module.h"
+#include "ns3/point-to-point-module.h"
+#include "ns3/animation-interface.h"
+
+#include <ns3/funcs.h>
 
 using namespace ns3;
 using namespace std;
@@ -62,22 +68,18 @@ int main (int argc, char *argv[])
 	CommandLine cmd;
 	cmd.AddValue("useCa", "test string", useCa);
 	cmd.Parse (argc, argv);
+	// Store the programm parameters during the simulation
+	/*ConfigStore config;
+	config.ConfigureDefaults ();*/
 
-	/*Create the Building Infrastructure*/
+	// Create the Building Infrastructure
 	Ptr<Building> build = CreateObject<Building> ();
 	Ptr<MobilityBuildingInfo> mbi;
-	cout <<" ******* Creating Building ******* "<< endl;
-	build->SetBoundaries (Box (0,101,0,51,0,10));
-	build->SetBuildingType (Building::Commercial);
-	build->SetExtWallsType(Building::ConcreteWithWindows);
-	build->SetNFloors(1);
-	build->SetNRoomsX (4);
-	build->SetNRoomsY (2);
-	mbi = CreateObject<MobilityBuildingInfo> ();
-	cout<< "The boundaries of the building is: " << build->GetBoundaries() << " ,number of floors is: " << build->GetNFloors() << ", the number of rooms in X is : " << build->GetNRoomsX() << " and in Y is : " << build->GetNRoomsY() << endl;
+	createBuilding(0,101,0,51,0,10,4,2,1,build,mbi);
 
 	Simulator::Stop (Seconds (2.00));
 
+	/*config.ConfigureAttributes ();*/
 	Simulator::Run ();
 
 	Simulator::Destroy ();
