@@ -55,6 +55,7 @@
 #include "ns3/applications-module.h"
 #include "ns3/point-to-point-module.h"
 #include "ns3/animation-interface.h"
+#include "ns3/random-variable-stream.h"
 
 #include <ns3/funcs.h>
 
@@ -63,20 +64,49 @@ using namespace std;
 
 int main (int argc, char *argv[])
 {
-	double useCa;
 
 	CommandLine cmd;
-	cmd.AddValue("useCa", "test string", useCa);
+	uint32_t seed, run;
+	cmd.AddValue("seed", "Define seed value", seed);
+	cmd.AddValue("run", "Define run value", run);
 	cmd.Parse (argc, argv);
+	RngSeedManager::SetSeed (seed);
+	RngSeedManager::SetRun (run);
 	// Store the programm parameters during the simulation
 	/*ConfigStore config;
 	config.ConfigureDefaults ();*/
 
+	/* ----------------Arithmetic Variables --------------*/
+	static uint16_t nHeNbs = 10;
+	static uint16_t neNbs = 4;
+	static uint16_t nWiFi = 3;
+	static const uint16_t nUEs = 10;
+
 	// Create the Building Infrastructure
 	Ptr<Building> build = CreateObject<Building> ();
 	Ptr<MobilityBuildingInfo> mbi;
-	createBuilding(0,101,0,51,0,10,4,2,1,build,mbi);
+	MobilityHelper mobility;
+	NetDeviceContainer enbLteDevs, ueLteDevs,HenbLteDevs;
+	NodeContainer eNbsnodes, HeNbsnodes, UEsnodes, remoteHostContainer, WiFinodes;
+	Ptr<ConstantPositionMobilityModel> mm0;
+	Ptr<MobilityModel> mob;
+	Vector pos;
+	createBuilding(300,401,300,351,0,10,4,2,1,build,mbi);
+	createMobility (mobility,mm0,neNbs,nHeNbs,nUEs,nWiFi,eNbsnodes,HeNbsnodes,UEsnodes,WiFinodes,remoteHostContainer,300,401,300,351);
 
+
+	for (uint32_t i=0;i<10;i++){
+		if (i<=3)
+		{
+			mob = eNbsnodes.Get(i)->GetObject<MobilityModel>();
+			cout << "The position of eNodeB: " << i+1 << " is x: " << mob->GetPosition().x  << " and y: " << mob->GetPosition().y << endl;
+		}
+		mob = HeNbsnodes.Get(i)->GetObject<MobilityModel>();
+		cout << "The position of HeNodeB: " << i+1 << " is x: " << mob->GetPosition().x  << " and y: " << mob->GetPosition().y << endl;
+	}
+	//double rand_val;
+	//rand_val = double(getRandom());
+	//cout << "Random value is " << getRandom(5,2) << endl;
 	Simulator::Stop (Seconds (2.00));
 
 	/*config.ConfigureAttributes ();*/
