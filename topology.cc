@@ -79,7 +79,7 @@ int main (int argc, char *argv[])
 	/* ----------------Arithmetic Variables --------------*/
 	static uint16_t nHeNbs = 10;
 	static uint16_t neNbs = 4;
-	static uint16_t nWiFi = 3;
+	static uint16_t nWiFi = 20;
 	static const uint16_t nUEs = 10;
 
 	// Create the Building Infrastructure
@@ -92,18 +92,9 @@ int main (int argc, char *argv[])
 	Ptr<MobilityModel> mob;
 	Vector pos;
 	createBuilding(300,401,300,351,0,10,4,2,1,build,mbi);
-	createMobility (mobility,mm0,neNbs,nHeNbs,nUEs,nWiFi,eNbsnodes,HeNbsnodes,UEsnodes,WiFinodes,remoteHostContainer,300,401,300,351);
+	createMobility(mobility,mm0,neNbs,nHeNbs,nUEs,nWiFi,eNbsnodes,HeNbsnodes,UEsnodes,WiFinodes,remoteHostContainer,300,401,300,351);
+	printTopology(mob,pos,neNbs,nHeNbs,nWiFi,eNbsnodes, HeNbsnodes,WiFinodes);
 
-
-	for (uint32_t i=0;i<10;i++){
-		if (i<=3)
-		{
-			mob = eNbsnodes.Get(i)->GetObject<MobilityModel>();
-			cout << "The position of eNodeB: " << i+1 << " is x: " << mob->GetPosition().x  << " and y: " << mob->GetPosition().y << endl;
-		}
-		mob = HeNbsnodes.Get(i)->GetObject<MobilityModel>();
-		cout << "The position of HeNodeB: " << i+1 << " is x: " << mob->GetPosition().x  << " and y: " << mob->GetPosition().y << endl;
-	}
 	//double rand_val;
 	//rand_val = double(getRandom());
 	//cout << "Random value is " << getRandom(5,2) << endl;
