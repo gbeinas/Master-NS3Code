@@ -64,7 +64,7 @@ using namespace std;
 
 int main (int argc, char *argv[])
 {
-
+	/* ----------------Command-Line Variables --------------*/
 	CommandLine cmd;
 	uint32_t seed, run;
 	cmd.AddValue("seed", "Define seed value", seed);
@@ -82,7 +82,7 @@ int main (int argc, char *argv[])
 	static uint16_t nWiFi = 20;
 	static const uint16_t nUEs = 10;
 
-	// Create the Building Infrastructure
+	/* --------------- Initial Container-Helpers -------------*/
 	Ptr<Building> build = CreateObject<Building> ();
 	Ptr<MobilityBuildingInfo> mbi;
 	MobilityHelper mobility;
