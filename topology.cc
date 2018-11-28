@@ -47,7 +47,6 @@
 #include "ns3/core-module.h"
 #include "ns3/network-module.h"
 #include "ns3/mobility-module.h"
-#include "ns3/lte-module.h"
 #include "ns3/config-store.h"
 #include <ns3/buildings-helper.h>
 #include <ns3/buildings-module.h>
@@ -56,6 +55,9 @@
 #include "ns3/point-to-point-module.h"
 #include "ns3/animation-interface.h"
 #include "ns3/random-variable-stream.h"
+#include "ns3/lte-helper.h"
+#include "ns3/epc-helper.h"
+#include "ns3/lte-module.h"
 
 #include <ns3/funcs.h>
 
@@ -66,15 +68,36 @@ int main (int argc, char *argv[])
 {
 	/* ----------------Command-Line Variables --------------*/
 	CommandLine cmd;
+	bool useCa = true;
 	uint32_t seed, run;
 	cmd.AddValue("seed", "Define seed value", seed);
 	cmd.AddValue("run", "Define run value", run);
+	cmd.AddValue("useCa", "Whether to use carrier aggregation.", useCa);
+	cmd.Parse(argc, argv);
 	cmd.Parse (argc, argv);
 	RngSeedManager::SetSeed (seed);
 	RngSeedManager::SetRun (run);
+	if (useCa)
+	{
+		 Config::SetDefault ("ns3::LteHelper::UseCa", BooleanValue (useCa));
+		 Config::SetDefault ("ns3::LteHelper::NumberOfComponentCarriers", UintegerValue (2));
+		 Config::SetDefault ("ns3::LteHelper::EnbComponentCarrierManager", StringValue ("ns3::RrComponentCarrierManager"));
+	}
+
 	// Store the programm parameters during the simulation
 	/*ConfigStore config;
 	config.ConfigureDefaults ();*/
+
+	/* ------------- struct to store UE stats  -------------- */
+	struct ueInformation{
+		uint32_t ue_id;
+		uint64_t txBytes [3];
+		uint64_t rxBytes [3];
+		uint32_t txPackets [3];
+		uint32_t rxPackets [3];
+		uint32_t LostPackets [3];
+		double transition_time;
+	};
 
 	/* ----------------Arithmetic Variables --------------*/
 	static uint16_t nHeNbs = 10;
@@ -84,6 +107,8 @@ int main (int argc, char *argv[])
 
 	/* --------------- Initial Container-Helpers -------------*/
 	Ptr<Building> build = CreateObject<Building> ();
+	Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
+	Ptr<PointToPointEpcHelper>  epcHelper = CreateObject<PointToPointEpcHelper> ();
 	Ptr<MobilityBuildingInfo> mbi;
 	MobilityHelper mobility;
 	NetDeviceContainer enbLteDevs, ueLteDevs,HenbLteDevs;
@@ -91,6 +116,11 @@ int main (int argc, char *argv[])
 	Ptr<ConstantPositionMobilityModel> mm0;
 	Ptr<MobilityModel> mob;
 	Vector pos;
+
+	//LTE initial stuff
+	lteHelper->SetEpcHelper (epcHelper);
+	Ptr<Node> pgw = epcHelper->GetPgwNode ();
+
 	createBuilding(300,401,300,351,0,10,4,2,1,build,mbi);
 	createMobility(mobility,mm0,neNbs,nHeNbs,nUEs,nWiFi,eNbsnodes,HeNbsnodes,UEsnodes,WiFinodes,remoteHostContainer,300,401,300,351);
 	printTopology(mob,pos,neNbs,nHeNbs,nWiFi,eNbsnodes, HeNbsnodes,WiFinodes);
