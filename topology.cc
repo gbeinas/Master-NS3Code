@@ -64,19 +64,20 @@
 using namespace ns3;
 using namespace std;
 
+
 int main (int argc, char *argv[])
 {
 	/* ----------------Command-Line Variables --------------*/
-	CommandLine cmd;
-	bool useCa = true;
-	uint32_t seed, run;
-	cmd.AddValue("seed", "Define seed value", seed);
-	cmd.AddValue("run", "Define run value", run);
+	Time::SetResolution(Time::NS);
 	cmd.AddValue("useCa", "Whether to use carrier aggregation.", useCa);
+	cmd.AddValue("rng","The value of RNG",RngSize);
+	cmd.AddValue("simTime"," Simulation Duration ",simTime);
+	cmd.AddValue("interval","Interval time between two packets",packet_interval);
+	cmd.AddValue("voice_packet_size"," Packet Size ",voice_packet_size);
+	cmd.AddValue("voip_packet_size"," Packet Size ",voip_packet_size);
 	cmd.Parse(argc, argv);
 	cmd.Parse (argc, argv);
-	RngSeedManager::SetSeed (seed);
-	RngSeedManager::SetRun (run);
+	RngSeedManager::SetRun (RngSize);
 	if (useCa)
 	{
 		 Config::SetDefault ("ns3::LteHelper::UseCa", BooleanValue (useCa));
@@ -84,47 +85,49 @@ int main (int argc, char *argv[])
 		 Config::SetDefault ("ns3::LteHelper::EnbComponentCarrierManager", StringValue ("ns3::RrComponentCarrierManager"));
 	}
 
-	// Store the programm parameters during the simulation
-	/*ConfigStore config;
-	config.ConfigureDefaults ();*/
+	/*--------------- Various Variables Declaration-----------*/
+	endTimeVoice = CreateObject<NormalRandomVariable> ();
+	endTimeVideo = CreateObject<NormalRandomVariable> ();
+	endTimeVoip = CreateObject<NormalRandomVariable> ();
+	sTypes = CreateObject<UniformRandomVariable> ();
+	sTypes->SetAttribute ("Min", DoubleValue (0.0));
+	sTypes->SetAttribute ("Max", DoubleValue (2.99));
 
-	/* ------------- struct to store UE stats  -------------- */
-	struct ueInformation{
-		uint32_t ue_id;
-		uint64_t txBytes [3];
-		uint64_t rxBytes [3];
-		uint32_t txPackets [3];
-		uint32_t rxPackets [3];
-		uint32_t LostPackets [3];
-		double transition_time;
-	};
+	ueIds = new ueInformation[nUEs_Array];
+	CellMap = new int [nUEs_Array];
+	Initialise_Arrays();
 
-	/* ----------------Arithmetic Variables --------------*/
-	static uint16_t nHeNbs = 10;
-	static uint16_t neNbs = 4;
-	static uint16_t nWiFi = 20;
-	static const uint16_t nUEs = 10;
-
-	/* --------------- Initial Container-Helpers -------------*/
-	Ptr<Building> build = CreateObject<Building> ();
-	Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
-	Ptr<PointToPointEpcHelper>  epcHelper = CreateObject<PointToPointEpcHelper> ();
-	Ptr<MobilityBuildingInfo> mbi;
-	MobilityHelper mobility;
-	NetDeviceContainer enbLteDevs, ueLteDevs,HenbLteDevs;
-	NodeContainer eNbsnodes, HeNbsnodes, UEsnodes, remoteHostContainer, WiFinodes;
-	Ptr<ConstantPositionMobilityModel> mm0;
-	Ptr<MobilityModel> mob;
-	Vector pos;
-
-	//LTE initial stuff
-	lteHelper->SetEpcHelper (epcHelper);
-	Ptr<Node> pgw = epcHelper->GetPgwNode ();
-
+	// TODO Add comments on this section
 	createBuilding(300,401,300,351,0,10,4,2,1,build,mbi);
 	createMobility(mobility,mm0,neNbs,nHeNbs,nUEs,nWiFi,eNbsnodes,HeNbsnodes,UEsnodes,WiFinodes,remoteHostContainer,300,401,300,351);
 	printTopology(mob,pos,neNbs,nHeNbs,nWiFi,eNbsnodes, HeNbsnodes,WiFinodes);
 
+	/*------------------------------Declaration of Simulation's LTE-Attributes-------------------------*/
+	lteHelper = CreateObject<LteHelper>();
+	epcHelper= CreateObject<EpcHelper>();
+	lteHelper->SetSchedulerType("ns3::RrFfMacScheduler");
+	//lteHelper->SetSchedulerAttribute("HarqEnabled",BooleanValue(true));
+	//lteHelper->SetSchedulerAttribute("CqiTimerThreshold",UintegerValue(1000));
+	lteHelper->SetEpcHelper(epcHelper);
+	Ptr<Node> pgw = epcHelper->GetPgwNode ();
+
+	enbLteDevs = accessNetworkSetUp(NodeContainer(eNbsnodes.Get(0)), 23.0, arg, 2.5, 5, 8, 100.0, 18000.0, eNbDLBandwidth, eNbULBandwidth);
+	for (int i=1;i<nHeNbs;i++)
+	{
+		enbLteDevs.Add(accessNetworkSetUp(NodeContainer(eNbsnodes.Get(i)), -96.0, arg, 2.5, 5, 8, 200.0, 18000.0, eNbDLBandwidth, eNbULBandwidth));
+	}
+
+
+
+
+	ueIpIface = epcHelper->AssignUeIpv4Address(NetDeviceContainer(ueLteDevs));
+
+	// TODO Add Application setup before start simulation
+	for (uint32_t i=0; i<nUEs; i++)
+	{
+		TrafficTimeline (sTypes, i, simTime);
+		std::cout << "Finished settin up traffic for UE\t" << (i+1) << "\n" << std::endl;
+	}
 	//double rand_val;
 	//rand_val = double(getRandom());
 	//cout << "Random value is " << getRandom(5,2) << endl;
