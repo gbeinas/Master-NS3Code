@@ -18,7 +18,6 @@
 
 /*********************** MODEL DESCRIPTION ************************/
 
-
   /*
    * Scenario topology - Building Infrastructure
    * 5 eNB, and 10 HeNBs (femtocells) and 20 WiFi access points
@@ -70,6 +69,8 @@ int main (int argc, char *argv[])
 	/* ----------------Command-Line Variables --------------*/
 	Time::SetResolution(Time::NS);
 	cmd.AddValue("useCa", "Whether to use carrier aggregation.", useCa);
+	cmd.AddValue("ul_pdcp","Number of HeNodeBs",ul_pdcp_flname);
+	cmd.AddValue("dl_pdcp","Number of HeNodeBs",dl_pdcp_flname);
 	cmd.AddValue("rng","The value of RNG",RngSize);
 	cmd.AddValue("simTime"," Simulation Duration ",simTime);
 	cmd.AddValue("interval","Interval time between two packets",packet_interval);
@@ -77,12 +78,13 @@ int main (int argc, char *argv[])
 	cmd.AddValue("voip_packet_size"," Packet Size ",voip_packet_size);
 	cmd.Parse(argc, argv);
 	cmd.Parse (argc, argv);
+	string arg = "ns3::HybridBuildingsPropagationLossModel";
 	RngSeedManager::SetRun (RngSize);
 	if (useCa)
 	{
-		 Config::SetDefault ("ns3::LteHelper::UseCa", BooleanValue (useCa));
-		 Config::SetDefault ("ns3::LteHelper::NumberOfComponentCarriers", UintegerValue (2));
-		 Config::SetDefault ("ns3::LteHelper::EnbComponentCarrierManager", StringValue ("ns3::RrComponentCarrierManager"));
+		Config::SetDefault ("ns3::LteHelper::UseCa", BooleanValue (useCa));
+		Config::SetDefault ("ns3::LteHelper::NumberOfComponentCarriers", UintegerValue (2));
+		Config::SetDefault ("ns3::LteHelper::EnbComponentCarrierManager", StringValue ("ns3::RrComponentCarrierManager"));
 	}
 
 	/*--------------- Various Variables Declaration-----------*/
@@ -93,8 +95,6 @@ int main (int argc, char *argv[])
 	sTypes->SetAttribute ("Min", DoubleValue (0.0));
 	sTypes->SetAttribute ("Max", DoubleValue (2.99));
 
-	ueIds = new ueInformation[nUEs_Array];
-	CellMap = new int [nUEs_Array];
 	Initialise_Arrays();
 
 	// TODO Add comments on this section
@@ -104,39 +104,50 @@ int main (int argc, char *argv[])
 
 	/*------------------------------Declaration of Simulation's LTE-Attributes-------------------------*/
 	lteHelper = CreateObject<LteHelper>();
-	epcHelper= CreateObject<EpcHelper>();
 	lteHelper->SetSchedulerType("ns3::RrFfMacScheduler");
 	//lteHelper->SetSchedulerAttribute("HarqEnabled",BooleanValue(true));
 	//lteHelper->SetSchedulerAttribute("CqiTimerThreshold",UintegerValue(1000));
 	lteHelper->SetEpcHelper(epcHelper);
-	Ptr<Node> pgw = epcHelper->GetPgwNode ();
+	pgw = epcHelper->GetPgwNode ();
 
-	enbLteDevs = accessNetworkSetUp(NodeContainer(eNbsnodes.Get(0)), 23.0, arg, 2.5, 5, 8, 100.0, 18000.0, eNbDLBandwidth, eNbULBandwidth);
-	for (int i=1;i<nHeNbs;i++)
+	for (int i=0;i<nHeNbs;i++)
 	{
-		enbLteDevs.Add(accessNetworkSetUp(NodeContainer(eNbsnodes.Get(i)), -96.0, arg, 2.5, 5, 8, 200.0, 18000.0, eNbDLBandwidth, eNbULBandwidth));
+		if(i<neNbs)
+		{
+			enbLteDevs.Add(accessNetworkSetUp(NodeContainer(eNbsnodes.Get(i)),TxPower,arg, frequency, internalWallLoss, shadow, eNB_dl_earfcn, eNB_ul_earfcn, eNbDLBandwidth, eNbULBandwidth));
+		}
+		HenbLteDevs.Add(accessNetworkSetUp(NodeContainer(HeNbsnodes.Get(i)), TxPower, arg, frequency, internalWallLoss, shadow, HeNB_dl_earfcn, Henb_ul_earfcn, eNbDLBandwidth, eNbULBandwidth));
+	}
+	alleNbs.Add (enbLteDevs);
+	alleNbs.Add (HenbLteDevs);
+
+	/* --------- Add X2 interface - Enabling x2 handover ----------*/
+	addX2intf();
+
+	/*----------- Create Remote Host,means the "Internet"----------*/
+	createInternet();
+
+	/*------------- Store the UE id for each user-------------------*/
+	for(uint32_t ll = 0; ll< ueLteDevs.GetN();ll++)
+	{
+		ueIds[ll].ue_id =  ueLteDevs.Get(ll)->GetObject<LteUeNetDevice>()->GetImsi();
 	}
 
-
-
-
-	ueIpIface = epcHelper->AssignUeIpv4Address(NetDeviceContainer(ueLteDevs));
-
+	/*--------------- Assign IP address to UEs and install-----------*/
+	assignIP();
 	// TODO Add Application setup before start simulation
 	for (uint32_t i=0; i<nUEs; i++)
 	{
 		TrafficTimeline (sTypes, i, simTime);
 		std::cout << "Finished settin up traffic for UE\t" << (i+1) << "\n" << std::endl;
 	}
-	//double rand_val;
-	//rand_val = double(getRandom());
-	//cout << "Random value is " << getRandom(5,2) << endl;
-	Simulator::Stop (Seconds (2.00));
+	Simulator::Stop(Seconds(simTime));
+	/*Simulator::Schedule(Seconds(1),&DL_PacketLoss,simTime);
+	Simulator::Schedule(Seconds(1),&Delay,simTime);
+	Simulator::Schedule(Seconds(1.2), &calculateBytes);*/
+	Simulator::Run();
+	Simulator::Destroy();
 
-	/*config.ConfigureAttributes ();*/
-	Simulator::Run ();
-
-	Simulator::Destroy ();
 	return 0;
 
 }
